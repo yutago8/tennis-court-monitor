@@ -288,19 +288,19 @@ function parseCourtAvailability(html: string, parks: string[], timeSlots: string
   const currentDate = new Date().toLocaleDateString('ja-JP')
   
   // テーブルから空き状況を解析
-  const tablePattern = /<table[^>]*>(.*?)<\/table>/gis
-  const tables = html.matchAll(tablePattern)
+  const tablePattern = /<table[^>]*>([\s\S]*?)<\/table>/gi
+  const tableMatches = Array.from(html.matchAll(tablePattern))
   
   let courtCount = 0
   
-  for (const tableMatch of tables) {
+  for (const tableMatch of tableMatches) {
     const tableHtml = tableMatch[1]
-    const rowPattern = /<tr[^>]*>(.*?)<\/tr>/gis
-    const rows = tableHtml.matchAll(rowPattern)
+    const rowPattern = /<tr[^>]*>([\s\S]*?)<\/tr>/gi
+    const rowMatches = Array.from(tableHtml.matchAll(rowPattern))
     
-    for (const rowMatch of rows) {
+    for (const rowMatch of rowMatches) {
       const rowHtml = rowMatch[1]
-      const cellPattern = /<t[dh][^>]*>(.*?)<\/t[dh]>/gis
+      const cellPattern = /<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi
       const cells = Array.from(rowHtml.matchAll(cellPattern)).map(m => m[1].replace(/<[^>]*>/g, '').trim())
       
       if (cells.length >= 2) {
