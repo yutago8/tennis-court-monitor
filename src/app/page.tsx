@@ -127,6 +127,12 @@ export default function TennisMonitor() {
     setLastError('')
 
     try {
+      console.log('🔄 APIリクエスト送信中...', {
+        parks: settings.parks.length,
+        timeSlots: settings.timeSlots.length,
+        dates: settings.selectedDates.length
+      })
+
       const response = await fetch('/api/real-court-check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -137,8 +143,19 @@ export default function TennisMonitor() {
         })
       })
 
+      console.log('📡 APIレスポンス受信:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries())
+      })
+
       if (response.ok) {
         const data = await response.json()
+        console.log('✅ APIデータ取得成功:', {
+          availabilities: data.availabilities?.length || 0,
+          success: data.success
+        })
         setAvailabilities(data.availabilities)
         
         // 新しい空きがあった場合の通知
@@ -153,11 +170,39 @@ export default function TennisMonitor() {
           // メール通知を送信
           sendEmailNotification(newAvailable)
         }
+      } else {
+        // エラーレスポンスの詳細を取得
+        let errorText = ''
+        try {
+          const errorData = await response.json()
+          errorText = errorData.error || errorData.details || 'APIエラー'
+          console.error('❌ APIエラーレスポンス:', errorData)
+        } catch {
+          errorText = await response.text()
+          console.error('❌ APIエラーテキスト:', errorText)
+        }
+        
+        throw new Error(`API Error (${response.status}): ${errorText}`)
       }
     } catch (error) {
       console.error('空き状況チェックエラー:', error)
-      const errorMessage = error instanceof Error ? error.message : '不明なエラー'
-      setLastError(errorMessage)
+      let errorMessage = '不明なエラー'
+      
+      if (error instanceof Error) {
+        errorMessage = error.message
+      } else if (typeof error === 'string') {
+        errorMessage = error
+      }
+      
+      // より詳細なエラー情報をログ出力
+      console.error('詳細エラー情報:', {
+        error,
+        type: typeof error,
+        message: errorMessage,
+        stack: error instanceof Error ? error.stack : 'No stack trace'
+      })
+      
+      setLastError(`${errorMessage} (${new Date().toLocaleTimeString()})`)
       setNotifications(prev => [`${new Date().toLocaleTimeString()}: ❌ エラー: ${errorMessage}`, ...prev.slice(0, 9)])
     } finally {
       setIsChecking(false)

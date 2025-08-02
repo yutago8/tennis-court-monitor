@@ -31,9 +31,20 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ 実システム接続エラー:', error)
+    console.error('❌ エラー詳細:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
+      type: typeof error,
+      parks: parks?.length || 0,
+      timeSlots: timeSlots?.length || 0,
+      dates: dates?.length || 0
+    })
+    
     return NextResponse.json({ 
       error: '都営システム接続に失敗しました',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString(),
+      request: { parks: parks?.length, timeSlots: timeSlots?.length, dates: dates?.length }
     }, { status: 500 })
   }
 }
@@ -48,6 +59,8 @@ async function getRealCourtStatus(parks: string[], timeSlots: string[], dates: s
     const cookieJar = new Map<string, string>()
     
     // Step 1: ログインページにアクセス
+    console.log('🌐 ログインページにアクセス中...', LOGIN_URL)
+    
     const loginPageResponse = await fetchWithCookies(LOGIN_URL, {
       method: 'GET',
       headers: {
@@ -59,6 +72,13 @@ async function getRealCourtStatus(parks: string[], timeSlots: string[], dates: s
         'Upgrade-Insecure-Requests': '1',
       }
     }, cookieJar)
+    
+    console.log('📡 ログインページレスポンス:', {
+      status: loginPageResponse.status,
+      statusText: loginPageResponse.statusText,
+      ok: loginPageResponse.ok,
+      url: loginPageResponse.url
+    })
     
     if (!loginPageResponse.ok) {
       throw new Error(`ログインページアクセス失敗: ${loginPageResponse.status}`)
@@ -161,31 +181,55 @@ async function getRealCourtStatus(parks: string[], timeSlots: string[], dates: s
 }
 
 async function fetchWithCookies(url: string, options: RequestInit, cookieJar: Map<string, string>) {
-  // クッキーを追加
-  const cookies = Array.from(cookieJar.entries()).map(([name, value]) => `${name}=${value}`).join('; ')
-  if (cookies) {
-    options.headers = {
-      ...options.headers,
-      'Cookie': cookies
-    }
-  }
-  
-  const response = await fetch(url, options)
-  
-  // レスポンスからクッキーを抽出
-  const setCookieHeaders = response.headers.get('set-cookie')
-  if (setCookieHeaders) {
-    const cookieStrings = setCookieHeaders.split(',')
-    for (const cookieString of cookieStrings) {
-      const [nameValue] = cookieString.split(';')
-      const [name, value] = nameValue.split('=')
-      if (name && value) {
-        cookieJar.set(name.trim(), value.trim())
+  try {
+    // クッキーを追加
+    const cookies = Array.from(cookieJar.entries()).map(([name, value]) => `${name}=${value}`).join('; ')
+    if (cookies) {
+      options.headers = {
+        ...options.headers,
+        'Cookie': cookies
       }
     }
+    
+    console.log('🔗 HTTP リクエスト:', {
+      url: url.substring(0, 100) + (url.length > 100 ? '...' : ''),
+      method: options.method || 'GET',
+      cookieCount: cookieJar.size
+    })
+    
+    const response = await fetch(url, options)
+    
+    console.log('📨 HTTP レスポンス:', {
+      status: response.status,
+      statusText: response.statusText,
+      contentType: response.headers.get('content-type'),
+      contentLength: response.headers.get('content-length')
+    })
+    
+    // レスポンスからクッキーを抽出
+    const setCookieHeaders = response.headers.get('set-cookie')
+    if (setCookieHeaders) {
+      const cookieStrings = setCookieHeaders.split(',')
+      for (const cookieString of cookieStrings) {
+        const [nameValue] = cookieString.split(';')
+        const [name, value] = nameValue.split('=')
+        if (name && value) {
+          cookieJar.set(name.trim(), value.trim())
+        }
+      }
+      console.log('🍪 クッキー更新:', cookieJar.size, '個')
+    }
+    
+    return response
+    
+  } catch (error) {
+    console.error('❌ fetchWithCookies エラー:', {
+      url,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace'
+    })
+    throw error
   }
-  
-  return response
 }
 
 function parseLoginForm(html: string): Record<string, string> {
