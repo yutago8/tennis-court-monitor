@@ -30,6 +30,8 @@ export default function TennisMonitor() {
   const [availabilities, setAvailabilities] = useState<CourtAvailability[]>([])
   const [notifications, setNotifications] = useState<string[]>([])
   const [showSettings, setShowSettings] = useState(false)
+  const [lastError, setLastError] = useState<string>('')
+  const [isChecking, setIsChecking] = useState(false)
 
   // 都営テニスコートの選択肢（実際のWebページから取得予定）
   const parkOptions = [
@@ -54,11 +56,35 @@ export default function TennisMonitor() {
     setSettings(prev => ({ ...prev, isActive: !prev.isActive }))
   }
 
+  const sendEmailNotification = async (availableCourts: CourtAvailability[]) => {
+    try {
+      const response = await fetch('/api/send-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          courts: availableCourts,
+          timestamp: new Date().toISOString()
+        })
+      })
+
+      if (response.ok) {
+        console.log('✅ メール通知送信完了')
+      } else {
+        console.error('❌ メール通知送信失敗')
+      }
+    } catch (error) {
+      console.error('❌ メール通知エラー:', error)
+    }
+  }
+
   const checkAvailability = useCallback(async () => {
     if (!settings.isActive || settings.parks.length === 0) return
 
+    setIsChecking(true)
+    setLastError('')
+
     try {
-      const response = await fetch('/api/test-courts', {
+      const response = await fetch('/api/real-court-check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -77,12 +103,20 @@ export default function TennisMonitor() {
         )
         
         if (newAvailable.length > 0) {
-          const newNotification = `${new Date().toLocaleTimeString()}: ${newAvailable.length}件の空きを発見！`
+          const newNotification = `${new Date().toLocaleTimeString()}: 🎉 ${newAvailable.length}件の空きを発見！`
           setNotifications(prev => [newNotification, ...prev.slice(0, 9)])
+          
+          // メール通知を送信
+          sendEmailNotification(newAvailable)
         }
       }
     } catch (error) {
       console.error('空き状況チェックエラー:', error)
+      const errorMessage = error instanceof Error ? error.message : '不明なエラー'
+      setLastError(errorMessage)
+      setNotifications(prev => [`${new Date().toLocaleTimeString()}: ❌ エラー: ${errorMessage}`, ...prev.slice(0, 9)])
+    } finally {
+      setIsChecking(false)
     }
   }, [settings.isActive, settings.parks, settings.timeSlots])
 
@@ -239,9 +273,17 @@ export default function TennisMonitor() {
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">状態:</span>
                 <span className={`text-sm font-medium ${
-                  settings.isActive ? 'text-green-600' : 'text-gray-400'
+                  settings.isActive 
+                    ? isChecking 
+                      ? 'text-blue-600' 
+                      : 'text-green-600' 
+                    : 'text-gray-400'
                 }`}>
-                  {settings.isActive ? '監視中' : '停止中'}
+                  {settings.isActive 
+                    ? isChecking 
+                      ? '接続中...' 
+                      : '監視中' 
+                    : '停止中'}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -256,6 +298,14 @@ export default function TennisMonitor() {
                 <span className="text-sm text-gray-600">チェック間隔:</span>
                 <span className="text-sm">{settings.interval}分</span>
               </div>
+              {lastError && (
+                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-800">
+                    <span className="font-medium">最新エラー:</span><br />
+                    {lastError}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
