@@ -14,13 +14,20 @@ const USER_ID = "10010139"
 const PASSWORD = "20Tomato24dayo/"
 
 export async function POST(request: NextRequest) {
+  let parks: string[] = []
+  let timeSlots: string[] = []
+  let dates: string[] = []
+
   try {
-    const { parks, timeSlots, dates } = await request.json()
+    const requestData = await request.json()
+    parks = requestData.parks || []
+    timeSlots = requestData.timeSlots || []
+    dates = requestData.dates || []
     
     console.log('🎾 実際の都営システムへ接続開始...')
-    console.log('対象:', { parks, timeSlots, dates })
+    console.log('対象:', { parks: parks.length, timeSlots: timeSlots.length, dates: dates.length })
 
-    const availabilities = await getRealCourtStatus(parks, timeSlots, dates || [])
+    const availabilities = await getRealCourtStatus(parks, timeSlots, dates)
     
     return NextResponse.json({
       success: true,
@@ -35,9 +42,9 @@ export async function POST(request: NextRequest) {
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : 'No stack trace',
       type: typeof error,
-      parksCount: parks?.length || 0,
-      timeSlotsCount: timeSlots?.length || 0,
-      datesCount: dates?.length || 0
+      parksCount: parks.length,
+      timeSlotsCount: timeSlots.length,
+      datesCount: dates.length
     })
     
     return NextResponse.json({ 
@@ -45,9 +52,9 @@ export async function POST(request: NextRequest) {
       details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString(),
       request: { 
-        parksCount: parks?.length || 0, 
-        timeSlotsCount: timeSlots?.length || 0, 
-        datesCount: dates?.length || 0 
+        parksCount: parks.length, 
+        timeSlotsCount: timeSlots.length, 
+        datesCount: dates.length 
       }
     }, { status: 500 })
   }
