@@ -209,7 +209,7 @@ async function checkSpecificCourt(page: Page, park: string, timeSlot: string): P
     const searchButtons = await page.$$('input[type="submit"], button[type="submit"]')
     if (searchButtons.length > 0) {
       await searchButtons[0].click()
-      await page.waitForTimeout(2000)
+      await new Promise(resolve => setTimeout(resolve, 2000))
     }
     
     // 結果を解析

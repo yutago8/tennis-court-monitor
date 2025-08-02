@@ -125,7 +125,7 @@ async function sendNotificationEmail(emailContent: { subject: string; body: stri
   }
 }
 
-async function sendViaGmailAPI(emailContent: { subject: string; body: string }) {
+async function sendViaGmailAPI(_emailContent: { subject: string; body: string }) {
   // Gmail API を使用したメール送信
   // 実装が複雑なため、現在は概要のみ
   console.log('🔄 Gmail API 送信を試行中...')

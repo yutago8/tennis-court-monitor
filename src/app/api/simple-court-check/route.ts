@@ -15,8 +15,8 @@ interface SimpleCheckRequest {
 }
 
 const LOGIN_URL = "https://kouen.sports.metro.tokyo.lg.jp/web/rsvWUserAttestationLoginAction.do"
-const USER_ID = "10010139"
-const PASSWORD = "20Tomato24dayo/"
+// const USER_ID = "10010139"
+// const PASSWORD = "20Tomato24dayo/"
 
 export async function POST(request: NextRequest) {
   try {
