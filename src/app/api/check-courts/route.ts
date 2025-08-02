@@ -158,7 +158,8 @@ async function checkSpecificCourt(page: Page, park: string, timeSlot: string): P
     // 公園選択（セレクトボックスを探して選択）
     const parkSelectors = await page.$$('select')
     
-    for (const selector of parkSelectors) {
+    for (let i = 0; i < parkSelectors.length; i++) {
+      const selector = parkSelectors[i]
       const options = await selector.$$eval('option', (opts: HTMLOptionElement[]) =>
         opts.map(opt => ({ value: opt.value, text: opt.textContent }))
       )
@@ -169,7 +170,12 @@ async function checkSpecificCourt(page: Page, park: string, timeSlot: string): P
       )
       
       if (matchingOption) {
-        await page.select(selector, matchingOption.value)
+        const selectName = await selector.evaluate(el => el.name || el.id)
+        if (selectName) {
+          await page.select(`select[name="${selectName}"], select[id="${selectName}"]`, matchingOption.value)
+        } else {
+          await page.select(`select:nth-child(${i + 1})`, matchingOption.value)
+        }
         break
       }
     }
@@ -178,7 +184,8 @@ async function checkSpecificCourt(page: Page, park: string, timeSlot: string): P
     const [startTime] = timeSlot.split('-')
     const timeSelectors = await page.$$('select')
     
-    for (const selector of timeSelectors) {
+    for (let i = 0; i < timeSelectors.length; i++) {
+      const selector = timeSelectors[i]
       const options = await selector.$$eval('option', (opts: HTMLOptionElement[]) =>
         opts.map(opt => ({ value: opt.value, text: opt.textContent }))
       )
@@ -188,7 +195,12 @@ async function checkSpecificCourt(page: Page, park: string, timeSlot: string): P
       )
       
       if (matchingTimeOption) {
-        await page.select(selector, matchingTimeOption.value)
+        const selectName = await selector.evaluate(el => el.name || el.id)
+        if (selectName) {
+          await page.select(`select[name="${selectName}"], select[id="${selectName}"]`, matchingTimeOption.value)
+        } else {
+          await page.select(`select:nth-child(${i + 1})`, matchingTimeOption.value)
+        }
         break
       }
     }
