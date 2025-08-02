@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Play, Pause, Settings, Bell, Clock, MapPin } from 'lucide-react'
 
 interface CourtAvailability {
@@ -54,7 +54,7 @@ export default function TennisMonitor() {
     setSettings(prev => ({ ...prev, isActive: !prev.isActive }))
   }
 
-  const checkAvailability = async () => {
+  const checkAvailability = useCallback(async () => {
     if (!settings.isActive || settings.parks.length === 0) return
 
     try {
@@ -84,7 +84,7 @@ export default function TennisMonitor() {
     } catch (error) {
       console.error('空き状況チェックエラー:', error)
     }
-  }
+  }, [settings.isActive, settings.parks, settings.timeSlots])
 
   useEffect(() => {
     let interval: NodeJS.Timeout
@@ -97,7 +97,7 @@ export default function TennisMonitor() {
     return () => {
       if (interval) clearInterval(interval)
     }
-  }, [settings.isActive, settings.parks, settings.timeSlots, settings.interval])
+  }, [settings.isActive, settings.interval, checkAvailability])
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">

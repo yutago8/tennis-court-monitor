@@ -126,7 +126,7 @@ async function checkCourtAvailability(parks: string[], timeSlots: string[]): Pro
   return availabilities
 }
 
-async function navigateToTennisReservation(page: any) {
+async function navigateToTennisReservation(page: puppeteer.Page) {
   try {
     // テニス関連のリンクを探す
     const links = await page.$$eval('a', (anchors: HTMLAnchorElement[]) => 
@@ -151,7 +151,7 @@ async function navigateToTennisReservation(page: any) {
   }
 }
 
-async function checkSpecificCourt(page: any, park: string, timeSlot: string): Promise<CourtAvailability[]> {
+async function checkSpecificCourt(page: puppeteer.Page, park: string, timeSlot: string): Promise<CourtAvailability[]> {
   const results: CourtAvailability[] = []
   
   try {
@@ -203,7 +203,7 @@ async function checkSpecificCourt(page: any, park: string, timeSlot: string): Pr
     // 結果を解析
     const courtData = await page.evaluate(() => {
       const tables = document.querySelectorAll('table')
-      const results: any[] = []
+      const results: { court: string; available: boolean }[] = []
       
       tables.forEach(table => {
         const rows = table.querySelectorAll('tr')
