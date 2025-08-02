@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import puppeteer from 'puppeteer'
+import puppeteer, { Page } from 'puppeteer'
 
 interface CourtAvailability {
   park: string
@@ -126,7 +126,7 @@ async function checkCourtAvailability(parks: string[], timeSlots: string[]): Pro
   return availabilities
 }
 
-async function navigateToTennisReservation(page: puppeteer.Page) {
+async function navigateToTennisReservation(page: Page) {
   try {
     // テニス関連のリンクを探す
     const links = await page.$$eval('a', (anchors: HTMLAnchorElement[]) => 
@@ -151,7 +151,7 @@ async function navigateToTennisReservation(page: puppeteer.Page) {
   }
 }
 
-async function checkSpecificCourt(page: puppeteer.Page, park: string, timeSlot: string): Promise<CourtAvailability[]> {
+async function checkSpecificCourt(page: Page, park: string, timeSlot: string): Promise<CourtAvailability[]> {
   const results: CourtAvailability[] = []
   
   try {
