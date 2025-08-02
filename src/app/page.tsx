@@ -15,6 +15,7 @@ interface CourtAvailability {
 interface MonitorSettings {
   parks: string[]
   timeSlots: string[]
+  selectedDates: string[]
   interval: number
   isActive: boolean
 }
@@ -23,6 +24,7 @@ export default function TennisMonitor() {
   const [settings, setSettings] = useState<MonitorSettings>({
     parks: [],
     timeSlots: [],
+    selectedDates: [],
     interval: 5,
     isActive: false
   })
@@ -33,13 +35,27 @@ export default function TennisMonitor() {
   const [lastError, setLastError] = useState<string>('')
   const [isChecking, setIsChecking] = useState(false)
 
-  // 都営テニスコートの選択肢（実際のWebページから取得予定）
+  // 都営テニスコートの全公園リスト
   const parkOptions = [
-    '駒沢オリンピック公園',
     '有明テニスの森公園',
-    '武蔵野の森公園',
-    '砧公園',
+    '駒沢オリンピック公園',
+    '大井ふ頭中央海浜公園',
+    '篠崎公園',
+    '大島小松川公園',
+    '石神井公園',
+    '井の頭恩賜公園',
+    '浮間公園',
+    '木場公園',
+    '舎人公園',
+    '城北中央公園',
+    '水元公園',
+    '善福寺川緑地',
     '代々木公園',
+    '武蔵野中央公園',
+    '武蔵野の森公園',
+    '夢の島公園',
+    '林試の森公園',
+    '砧公園',
     '葛西臨海公園'
   ]
 
@@ -51,6 +67,33 @@ export default function TennisMonitor() {
     '17:00-19:00',
     '19:00-21:00'
   ]
+
+  // 日付選択用のオプションを生成（今日から30日後まで）
+  const generateDateOptions = () => {
+    const dates = []
+    const today = new Date()
+    
+    for (let i = 0; i < 30; i++) {
+      const date = new Date(today)
+      date.setDate(today.getDate() + i)
+      
+      const dateString = date.toISOString().split('T')[0] // YYYY-MM-DD format
+      const displayString = date.toLocaleDateString('ja-JP', {
+        month: 'numeric',
+        day: 'numeric',
+        weekday: 'short'
+      })
+      
+      dates.push({
+        value: dateString,
+        display: `${date.getMonth() + 1}/${date.getDate()}(${displayString.split('(')[1]}`
+      })
+    }
+    
+    return dates
+  }
+
+  const dateOptions = generateDateOptions()
 
   const toggleMonitoring = () => {
     setSettings(prev => ({ ...prev, isActive: !prev.isActive }))
@@ -89,7 +132,8 @@ export default function TennisMonitor() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           parks: settings.parks,
-          timeSlots: settings.timeSlots
+          timeSlots: settings.timeSlots,
+          dates: settings.selectedDates
         })
       })
 
@@ -118,7 +162,7 @@ export default function TennisMonitor() {
     } finally {
       setIsChecking(false)
     }
-  }, [settings.isActive, settings.parks, settings.timeSlots])
+  }, [settings.isActive, settings.parks, settings.timeSlots, settings.selectedDates])
 
   useEffect(() => {
     let interval: NodeJS.Timeout
@@ -169,12 +213,27 @@ export default function TennisMonitor() {
           <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
             <h2 className="text-xl font-semibold mb-4">監視設定</h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   監視対象公園
                 </label>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
+                <div className="space-y-1 max-h-48 overflow-y-auto border rounded-md p-2">
+                  <label className="flex items-center mb-2 bg-blue-50 p-2 rounded">
+                    <input
+                      type="checkbox"
+                      checked={settings.parks.length === parkOptions.length}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSettings(prev => ({ ...prev, parks: [...parkOptions] }))
+                        } else {
+                          setSettings(prev => ({ ...prev, parks: [] }))
+                        }
+                      }}
+                      className="mr-2"
+                    />
+                    <span className="text-sm font-medium text-blue-700">全て選択 ({parkOptions.length}公園)</span>
+                  </label>
                   {parkOptions.map(park => (
                     <label key={park} className="flex items-center">
                       <input
@@ -192,7 +251,7 @@ export default function TennisMonitor() {
                         }}
                         className="mr-2"
                       />
-                      <span className="text-sm">{park}</span>
+                      <span className="text-xs">{park}</span>
                     </label>
                   ))}
                 </div>
@@ -202,7 +261,22 @@ export default function TennisMonitor() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   監視時間帯
                 </label>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
+                <div className="space-y-1 max-h-48 overflow-y-auto border rounded-md p-2">
+                  <label className="flex items-center mb-2 bg-green-50 p-2 rounded">
+                    <input
+                      type="checkbox"
+                      checked={settings.timeSlots.length === timeSlotOptions.length}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSettings(prev => ({ ...prev, timeSlots: [...timeSlotOptions] }))
+                        } else {
+                          setSettings(prev => ({ ...prev, timeSlots: [] }))
+                        }
+                      }}
+                      className="mr-2"
+                    />
+                    <span className="text-sm font-medium text-green-700">全時間帯</span>
+                  </label>
                   {timeSlotOptions.map(timeSlot => (
                     <label key={timeSlot} className="flex items-center">
                       <input
@@ -221,6 +295,49 @@ export default function TennisMonitor() {
                         className="mr-2"
                       />
                       <span className="text-sm">{timeSlot}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  監視対象日付
+                </label>
+                <div className="space-y-1 max-h-48 overflow-y-auto border rounded-md p-2">
+                  <label className="flex items-center mb-2 bg-orange-50 p-2 rounded">
+                    <input
+                      type="checkbox"
+                      checked={settings.selectedDates.length === dateOptions.length}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSettings(prev => ({ ...prev, selectedDates: dateOptions.map(d => d.value) }))
+                        } else {
+                          setSettings(prev => ({ ...prev, selectedDates: [] }))
+                        }
+                      }}
+                      className="mr-2"
+                    />
+                    <span className="text-sm font-medium text-orange-700">30日間全て</span>
+                  </label>
+                  {dateOptions.map(date => (
+                    <label key={date.value} className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={settings.selectedDates.includes(date.value)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSettings(prev => ({ ...prev, selectedDates: [...prev.selectedDates, date.value] }))
+                          } else {
+                            setSettings(prev => ({ 
+                              ...prev, 
+                              selectedDates: prev.selectedDates.filter(d => d !== date.value) 
+                            }))
+                          }
+                        }}
+                        className="mr-2"
+                      />
+                      <span className="text-xs">{date.display}</span>
                     </label>
                   ))}
                 </div>
@@ -293,6 +410,10 @@ export default function TennisMonitor() {
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">時間帯:</span>
                 <span className="text-sm">{settings.timeSlots.length}件</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">対象日付:</span>
+                <span className="text-sm">{settings.selectedDates.length}日</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">チェック間隔:</span>

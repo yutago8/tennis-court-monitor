@@ -15,12 +15,12 @@ const PASSWORD = "20Tomato24dayo/"
 
 export async function POST(request: NextRequest) {
   try {
-    const { parks, timeSlots } = await request.json()
+    const { parks, timeSlots, dates } = await request.json()
     
     console.log('🎾 実際の都営システムへ接続開始...')
-    console.log('対象:', { parks, timeSlots })
+    console.log('対象:', { parks, timeSlots, dates })
 
-    const availabilities = await getRealCourtStatus(parks, timeSlots)
+    const availabilities = await getRealCourtStatus(parks, timeSlots, dates || [])
     
     return NextResponse.json({
       success: true,
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function getRealCourtStatus(parks: string[], timeSlots: string[]): Promise<CourtAvailability[]> {
+async function getRealCourtStatus(parks: string[], timeSlots: string[], dates: string[]): Promise<CourtAvailability[]> {
   const availabilities: CourtAvailability[] = []
   
   try {
@@ -130,7 +130,7 @@ async function getRealCourtStatus(parks: string[], timeSlots: string[]): Promise
     console.log('🏟️ テニスページ取得完了 (', Math.round(tennisPageHtml.length / 1024), 'KB)')
     
     // Step 7: 空き状況の解析
-    const courtData = parseCourtAvailability(tennisPageHtml, parks, timeSlots)
+    const courtData = parseCourtAvailability(tennisPageHtml, parks, timeSlots, dates)
     availabilities.push(...courtData)
     
     console.log('📊 空き状況解析完了:', availabilities.length, '件')
@@ -140,18 +140,19 @@ async function getRealCourtStatus(parks: string[], timeSlots: string[]): Promise
     
     // エラーが発生した場合でも基本的な情報を返す
     const currentTime = new Date().toLocaleTimeString('ja-JP')
-    const currentDate = new Date().toLocaleDateString('ja-JP')
     
     for (const park of parks) {
       for (const timeSlot of timeSlots) {
-        availabilities.push({
-          park,
-          court: `エラー: ${error instanceof Error ? error.message : '不明なエラー'}`,
-          date: currentDate,
-          time: timeSlot,
-          status: 'unavailable',
-          lastChecked: currentTime
-        })
+        for (const date of dates.length > 0 ? dates : [new Date().toLocaleDateString('ja-JP')]) {
+          availabilities.push({
+            park,
+            court: `エラー: ${error instanceof Error ? error.message : '不明なエラー'}`,
+            date: typeof date === 'string' ? new Date(date).toLocaleDateString('ja-JP') : date,
+            time: timeSlot,
+            status: 'unavailable',
+            lastChecked: currentTime
+          })
+        }
       }
     }
   }
@@ -282,7 +283,7 @@ function findTennisPages(html: string): string[] {
   return tennisPages
 }
 
-function parseCourtAvailability(html: string, parks: string[], timeSlots: string[]): CourtAvailability[] {
+function parseCourtAvailability(html: string, parks: string[], timeSlots: string[], dates: string[]): CourtAvailability[] {
   const availabilities: CourtAvailability[] = []
   const currentTime = new Date().toLocaleTimeString('ja-JP')
   const currentDate = new Date().toLocaleDateString('ja-JP')
@@ -314,18 +315,21 @@ function parseCourtAvailability(html: string, parks: string[], timeSlots: string
                            statusInfo.includes('可')
         
         if (courtInfo && (courtInfo.includes('コート') || courtInfo.includes('court'))) {
-          // 各公園・時間帯に対してデータを生成
+          // 各公園・時間帯・日付に対してデータを生成
           for (const park of parks) {
             for (const timeSlot of timeSlots) {
-              availabilities.push({
-                park,
-                court: courtInfo,
-                date: currentDate,
-                time: timeSlot,
-                status: isAvailable ? 'available' : 'unavailable',
-                lastChecked: currentTime
-              })
-              courtCount++
+              for (const date of dates.length > 0 ? dates : [currentDate]) {
+                const displayDate = typeof date === 'string' ? new Date(date).toLocaleDateString('ja-JP') : date
+                availabilities.push({
+                  park,
+                  court: courtInfo,
+                  date: displayDate,
+                  time: timeSlot,
+                  status: isAvailable ? 'available' : 'unavailable',
+                  lastChecked: currentTime
+                })
+                courtCount++
+              }
             }
           }
         }
@@ -337,14 +341,17 @@ function parseCourtAvailability(html: string, parks: string[], timeSlots: string
   if (courtCount === 0) {
     for (const park of parks) {
       for (const timeSlot of timeSlots) {
-        availabilities.push({
-          park,
-          court: 'データ解析中',
-          date: currentDate,
-          time: timeSlot,
-          status: 'unavailable',
-          lastChecked: currentTime
-        })
+        for (const date of dates.length > 0 ? dates : [currentDate]) {
+          const displayDate = typeof date === 'string' ? new Date(date).toLocaleDateString('ja-JP') : date
+          availabilities.push({
+            park,
+            court: 'データ解析中',
+            date: displayDate,
+            time: timeSlot,
+            status: 'unavailable',
+            lastChecked: currentTime
+          })
+        }
       }
     }
   }
