@@ -35,16 +35,20 @@ export async function POST(request: NextRequest) {
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : 'No stack trace',
       type: typeof error,
-      parks: parks?.length || 0,
-      timeSlots: timeSlots?.length || 0,
-      dates: dates?.length || 0
+      parksCount: parks?.length || 0,
+      timeSlotsCount: timeSlots?.length || 0,
+      datesCount: dates?.length || 0
     })
     
     return NextResponse.json({ 
       error: '都営システム接続に失敗しました',
       details: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString(),
-      request: { parks: parks?.length, timeSlots: timeSlots?.length, dates: dates?.length }
+      request: { 
+        parksCount: parks?.length || 0, 
+        timeSlotsCount: timeSlots?.length || 0, 
+        datesCount: dates?.length || 0 
+      }
     }, { status: 500 })
   }
 }
